@@ -12,6 +12,7 @@ This file is the source of truth for how to build, test, and extend the project.
 - [x] Phase 4 — Validation + error handling
 - [ ] Phase 5 — Tests
 - [ ] Phase 6 — Docker + docs
+- [x] Phase 7 — Users, JWT authentication, RBAC (done before 5/6 at the owner's request)
 
 Tick a phase only after its checkpoint passes. Update this list when you finish a phase.
 
@@ -27,6 +28,8 @@ Tick a phase only after its checkpoint passes. Update this list when you finish 
 | Tests        | xUnit + `WebApplicationFactory<Program>` + SQLite in-memory |
 | Container    | Multi-stage Dockerfile, `docker compose up`   |
 | EF tooling   | `dotnet-ef` 8.x as a *local* tool (`.config/dotnet-tools.json`), not global |
+| Auth         | JWT bearer (`Microsoft.AspNetCore.Authentication.JwtBearer`), HS256, passwords via built-in `PasswordHasher<User>`. **Not** ASP.NET Identity. |
+| Roles        | `UserRole` enum: `User`, `Admin`. Policy `AuthConstants.AdminPolicy` = `RequireRole("Admin")`. |
 
 ## Docker-only workflow (important)
 
@@ -58,14 +61,18 @@ dot-net-api/
 ├── docker-compose.yml
 ├── TodoApi.Api/
 │   ├── Program.cs              # composition root only — keep it short
-│   ├── TodoApi.http            # manual request samples for VS Code
-│   ├── Models/TodoItem.cs      # EF entity
-│   ├── Dtos/                   # CreateTodoRequest, UpdateTodoRequest, TodoResponse
-│   ├── Data/TodoDbContext.cs
+│   ├── TodoApi.Api.http        # manual request samples for VS Code (login first; token auto-fills)
+│   ├── Models/                 # TodoItem, User, UserRole — EF entities
+│   ├── Dtos/                   # request/response records; never entities
+│   ├── Auth/                   # JwtOptions, AuthConstants, CurrentUser, ClaimsPrincipalExtensions,
+│   │                           # AuthenticationExtensions (AddJwtAuthentication, AddSwaggerWithJwt)
+│   ├── Data/TodoDbContext.cs, UtcDateTimeConverter.cs, DbSeeder.cs (first admin)
 │   ├── Data/Migrations/
-│   ├── Services/ITodoService.cs, TodoService.cs
+│   ├── Services/               # ITodoService/TodoService, IUserService/UserService,
+│   │                           # ITokenService/TokenService, Paging, UserResult/UserError,
+│   │                           # ServiceCollectionExtensions (AddApplicationServices)
 │   ├── Validators/             # FluentValidation validators for request DTOs
-│   └── Endpoints/TodoEndpoints.cs   # MapTodoEndpoints() extension, route group /api/todos
+│   └── Endpoints/              # TodoEndpoints, UsersEndpoints, AuthEndpoints, ValidationFilter<T>
 └── TodoApi.Tests/
     ├── TodoApiFactory.cs       # WebApplicationFactory with in-memory SQLite
     └── TodoEndpointsTests.cs
@@ -90,21 +97,59 @@ Stop a running `./dotnet.sh run` with Ctrl-C; if a container is left behind, `do
 
 ## API contract
 
-Base route: `/api/todos`. JSON in/out. IDs are `int`.
+JSON in/out. IDs are `int`. All error responses use RFC 7807 `ProblemDetails` / `ValidationProblemDetails`.
+Every route except `/api/auth/*` requires `Authorization: Bearer <token>` (401 without, 403 for wrong role).
+
+### Auth (anonymous)
+
+| Method | Route                | Success | Errors |
+|--------|----------------------|---------|--------|
+| POST   | `/api/auth/register` | 201 `UserResponse` + `Location` (role always `User`) | 400 validation, 409 email taken |
+| POST   | `/api/auth/login`    | 200 `{ accessToken, expiresAt, user }` | 400 validation, 401 bad credentials |
+
+### Users (Admin only, except `/me`)
+
+| Method | Route                | Success | Errors |
+|--------|----------------------|---------|--------|
+| GET    | `/api/users/me`      | 200 `UserResponse` (any signed-in user) | 404 if the account was deleted |
+| GET    | `/api/users?page=&pageSize=` | 200 `PagedResponse<UserResponse>` | — |
+| GET    | `/api/users/{id}`    | 200     | 404 |
+| POST   | `/api/users`         | 201 + `Location` (any role) | 400 validation, 409 email taken |
+| PUT    | `/api/users/{id}`    | 204     | 400 validation / changing own role, 404 |
+| DELETE | `/api/users/{id}`    | 204 (cascades to their todos) | 400 deleting yourself, 404 |
+
+`User`: `Id`, `Email` (unique, stored lower-case, ≤256), `DisplayName` (≤100), `Role`, `CreatedAt`, `UpdatedAt`.
+`PasswordHash` never leaves the server. Password rules: 8–128 chars. Email cannot be changed after creation.
+
+### Todos (any signed-in user)
 
 | Method | Route                       | Success | Errors        |
 |--------|-----------------------------|---------|---------------|
-| GET    | `/api/todos?isCompleted=&page=&pageSize=` | 200 list | — |
+| GET    | `/api/todos?isCompleted=&page=&pageSize=` | 200 `PagedResponse<TodoResponse>` | — |
 | GET    | `/api/todos/{id}`           | 200     | 404           |
-| POST   | `/api/todos`                | 201 + `Location` | 400 validation |
+| POST   | `/api/todos`                | 201 + `Location` (owner = caller) | 400 validation |
 | PUT    | `/api/todos/{id}`           | 204     | 400, 404      |
-| PATCH  | `/api/todos/{id}/complete`  | 204     | 404           |
+| PATCH  | `/api/todos/{id}/complete`  | 204 (idempotent) | 404  |
 | DELETE | `/api/todos/{id}`           | 204     | 404           |
 
 `TodoItem`: `Id`, `Title` (required, ≤200 chars), `Description?` (≤2000), `IsCompleted`,
-`DueDate?`, `CreatedAt`, `UpdatedAt` (UTC, set server-side).
+`DueDate?`, `OwnerId` (FK → Users, cascade delete), `CreatedAt`, `UpdatedAt` (UTC, set server-side).
 
-All error responses use RFC 7807 `ProblemDetails` / `ValidationProblemDetails`.
+**Ownership rule:** `User`-role callers only ever see/modify their own todos; anything else is a 404
+(not 403) so ids can't be probed. `Admin` sees and can modify every todo. Implemented once in
+`TodoService.VisibleTo(CurrentUser)` — every query goes through it.
+
+### Auth configuration
+
+| Setting | Where | Notes |
+|---|---|---|
+| `Jwt:Key` | `appsettings.Development.json` (dev) / `Jwt__Key` env var (everything else) | ≥ 32 bytes; startup throws without it. Never commit a real key. |
+| `Jwt:Issuer`, `Jwt:Audience`, `Jwt:ExpiryMinutes` | `appsettings.json` | defaults `TodoApi` / `TodoApi` / 60 |
+| `Seed:AdminEmail`, `Seed:AdminPassword` | `appsettings.Development.json` (dev: `admin@todo.local` / `Admin123!`) / env vars | `DbSeeder` creates this admin only when no Admin exists |
+
+Tokens carry `sub` (user id), `email`, `name`, `role`. `MapInboundClaims = false`, so read them with the
+short names (`ClaimsPrincipalExtensions.ToCurrentUser()`), not `ClaimTypes.*`. A role change takes effect
+on the user's next login; there is no refresh token or revocation (deliberately out of scope).
 
 ## Conventions
 
@@ -117,6 +162,11 @@ All error responses use RFC 7807 `ProblemDetails` / `ValidationProblemDetails`.
 - Timestamps are `DateTime` in UTC (`DateTime.UtcNow`).
 - Configuration via `appsettings.json` + environment variables; no secrets in the repo.
 - Every endpoint gets at least: happy-path test, not-found test (where applicable), validation-failure test.
+- Handlers take `ClaimsPrincipal principal` and pass `principal.ToCurrentUser()` to services; services never
+  touch `HttpContext`. Data scoping (own vs all) lives in the service, role gating (`RequireAuthorization`) on the endpoint.
+- Expected failures come back as results (`UserResult` / `UserError`, `null`, `false`) and are mapped to
+  status codes in the endpoint — never exceptions. Bare `NotFound()` gets its ProblemDetails body from `UseStatusCodePages`.
+- Swagger has an **Authorize** button: paste the `accessToken` from `POST /api/auth/login`.
 
 ## Phase plan (one phase per session/prompt)
 
@@ -167,9 +217,18 @@ Each phase ends with a checkpoint. Do not start the next phase until the checkpo
 
 ### Phase 6 — Docker + docs
 1. Multi-stage `Dockerfile` (sdk:8.0 build → aspnet:8.0 runtime), expose 8080
-2. `docker-compose.yml` mounting a volume for `todo.db`
-3. Update `README.md`: what it is, how to run locally, how to run with Docker, curl examples, how to test
-- Checkpoint: `docker compose up --build` serves the API on `http://localhost:8080/api/todos`.
+2. `docker-compose.yml` mounting a volume for `todo.db`; pass `Jwt__Key`, `Seed__AdminEmail`, `Seed__AdminPassword` as env vars
+3. Decide how migrations run outside Development (startup `MigrateAsync` or a one-off `ef database update`) — today they only auto-apply in Development
+4. Update `README.md`: what it is, how to run locally, how to run with Docker, curl examples, how to test
+- Checkpoint: `docker compose up --build` serves the API on `http://localhost:8080/api/todos` and login works with the env-var admin.
+
+### Phase 7 — Users, JWT auth, RBAC  ✅ done
+1. `User` entity + `UserRole` enum; `TodoItem.OwnerId` FK with cascade delete; migration `AddUsersAndTodoOwner`
+2. `Auth/` — JWT options/validation, `CurrentUser`, `AddJwtAuthentication`, `AddSwaggerWithJwt`
+3. `TokenService` (HS256, claims `sub`/`email`/`name`/`role`), `UserService` (register, login, admin CRUD, self-lockout guards)
+4. `AuthEndpoints` (`/api/auth`), `UsersEndpoints` (`/api/users`, Admin policy), `TodoEndpoints` now `RequireAuthorization()` and owner-scoped
+5. `DbSeeder.SeedAdminAsync` from `Seed:*` config; enum JSON as strings
+- Checkpoint: verified by curl — 401/403/409/400 paths, ownership isolation (cross-user access is 404), admin override, cascade delete, self-role/self-delete guards, Swagger `Bearer` scheme. Phase 5 tests must cover these too.
 
 ## Working rules for Claude Code
 
@@ -177,7 +236,8 @@ Each phase ends with a checkpoint. Do not start the next phase until the checkpo
 - Always use `./dotnet.sh`, never bare `dotnet` (it does not exist on the host).
 - Run `./dotnet.sh build` after every code change and `./dotnet.sh test` before saying a phase is done.
 - Report test failures verbatim; never claim green without running.
-- Ask before: anything needing sudo, changing the stack table or the SDK image tag, adding auth/other big features not in the plan.
+- Ask before: anything needing sudo, changing the stack table or the SDK image tag, adding big features not in the plan (auth is now in the plan).
+- Never log or return `PasswordHash`; never commit a real `Jwt:Key`. The dev key in `appsettings.Development.json` is intentionally fake.
 - Commit after each green checkpoint with a message like `Phase 3: add todo CRUD endpoints`. Do not commit `todo.db`, `bin/`, `obj/`.
 - Keep `Program.cs` under ~40 lines; if it grows, extract to extension methods.
 - Prefer editing existing files over creating new ones; don't add layers (repositories, mediators) that the plan doesn't call for.

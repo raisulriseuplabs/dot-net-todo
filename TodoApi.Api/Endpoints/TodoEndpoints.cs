@@ -1,4 +1,6 @@
+using System.Security.Claims;
 using Microsoft.AspNetCore.Http.HttpResults;
+using TodoApi.Api.Auth;
 using TodoApi.Api.Dtos;
 using TodoApi.Api.Services;
 
@@ -10,7 +12,8 @@ public static class TodoEndpoints
     {
         var group = app.MapGroup("/api/todos")
             .WithTags("Todos")
-            .WithOpenApi();
+            .WithOpenApi()
+            .RequireAuthorization();
 
         group.MapGet("/", GetAll).WithName("GetTodos");
         group.MapGet("/{id:int}", GetById).WithName("GetTodoById");
@@ -29,48 +32,49 @@ public static class TodoEndpoints
     }
 
     private static async Task<Ok<PagedResponse<TodoResponse>>> GetAll(
+        ClaimsPrincipal principal,
         ITodoService service,
         CancellationToken ct,
         bool? isCompleted = null,
         int page = 1,
         int pageSize = 20)
     {
-        var result = await service.GetAllAsync(isCompleted, page, pageSize, ct);
+        var result = await service.GetAllAsync(principal.ToCurrentUser(), isCompleted, page, pageSize, ct);
         return TypedResults.Ok(result);
     }
 
     private static async Task<Results<Ok<TodoResponse>, NotFound>> GetById(
-        int id, ITodoService service, CancellationToken ct)
+        int id, ClaimsPrincipal principal, ITodoService service, CancellationToken ct)
     {
-        var todo = await service.GetByIdAsync(id, ct);
+        var todo = await service.GetByIdAsync(principal.ToCurrentUser(), id, ct);
         return todo is null ? TypedResults.NotFound() : TypedResults.Ok(todo);
     }
 
     private static async Task<CreatedAtRoute<TodoResponse>> Create(
-        CreateTodoRequest request, ITodoService service, CancellationToken ct)
+        CreateTodoRequest request, ClaimsPrincipal principal, ITodoService service, CancellationToken ct)
     {
-        var todo = await service.CreateAsync(request, ct);
+        var todo = await service.CreateAsync(principal.ToCurrentUser(), request, ct);
         return TypedResults.CreatedAtRoute(todo, "GetTodoById", new { id = todo.Id });
     }
 
     private static async Task<Results<NoContent, NotFound>> Update(
-        int id, UpdateTodoRequest request, ITodoService service, CancellationToken ct)
+        int id, UpdateTodoRequest request, ClaimsPrincipal principal, ITodoService service, CancellationToken ct)
     {
-        var updated = await service.UpdateAsync(id, request, ct);
+        var updated = await service.UpdateAsync(principal.ToCurrentUser(), id, request, ct);
         return updated ? TypedResults.NoContent() : TypedResults.NotFound();
     }
 
     private static async Task<Results<NoContent, NotFound>> Complete(
-        int id, ITodoService service, CancellationToken ct)
+        int id, ClaimsPrincipal principal, ITodoService service, CancellationToken ct)
     {
-        var completed = await service.CompleteAsync(id, ct);
+        var completed = await service.CompleteAsync(principal.ToCurrentUser(), id, ct);
         return completed ? TypedResults.NoContent() : TypedResults.NotFound();
     }
 
     private static async Task<Results<NoContent, NotFound>> Delete(
-        int id, ITodoService service, CancellationToken ct)
+        int id, ClaimsPrincipal principal, ITodoService service, CancellationToken ct)
     {
-        var deleted = await service.DeleteAsync(id, ct);
+        var deleted = await service.DeleteAsync(principal.ToCurrentUser(), id, ct);
         return deleted ? TypedResults.NoContent() : TypedResults.NotFound();
     }
 }

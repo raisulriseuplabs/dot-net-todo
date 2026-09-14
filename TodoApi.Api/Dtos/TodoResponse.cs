@@ -9,7 +9,8 @@ public record TodoResponse(
     bool IsCompleted,
     DateTime? DueDate,
     DateTime CreatedAt,
-    DateTime UpdatedAt)
+    DateTime UpdatedAt,
+    int OwnerId)
 {
     public static TodoResponse FromEntity(TodoItem todo) => new(
         todo.Id,
@@ -18,5 +19,6 @@ public record TodoResponse(
         todo.IsCompleted,
         todo.DueDate,
         todo.CreatedAt,
-        todo.UpdatedAt);
+        todo.UpdatedAt,
+        todo.OwnerId);
 }

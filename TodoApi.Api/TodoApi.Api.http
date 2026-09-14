@@ -1,21 +1,88 @@
 @TodoApi.Api_HostAddress = http://localhost:5000
 @id = 1
+@userId = 2
 
+### ─── Auth ────────────────────────────────────────────────────────────────
+### Log in as the seeded admin (dev credentials from appsettings.Development.json)
+# @name login
+POST {{TodoApi.Api_HostAddress}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "admin@todo.local",
+  "password": "Admin123!"
+}
+
+### The token below is filled from the login response above (run that request first)
+@token = {{login.response.body.$.accessToken}}
+
+### Register a normal user (role is always "User")
+POST {{TodoApi.Api_HostAddress}}/api/auth/register
+Content-Type: application/json
+
+{
+  "email": "alice@example.com",
+  "displayName": "Alice",
+  "password": "alicepass1"
+}
+
+### Who am I?
+GET {{TodoApi.Api_HostAddress}}/api/users/me
+Authorization: Bearer {{token}}
+
+### ─── Users (Admin only) ──────────────────────────────────────────────────
+### List users
+GET {{TodoApi.Api_HostAddress}}/api/users?page=1&pageSize=20
+Authorization: Bearer {{token}}
+
+### Get one user
+GET {{TodoApi.Api_HostAddress}}/api/users/{{userId}}
+Authorization: Bearer {{token}}
+
+### Create a user with an explicit role ("User" or "Admin")
+POST {{TodoApi.Api_HostAddress}}/api/users
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "email": "bob@example.com",
+  "displayName": "Bob",
+  "password": "bobpass123",
+  "role": "Admin"
+}
+
+### Update display name / role; password is optional (null = keep current)
+PUT {{TodoApi.Api_HostAddress}}/api/users/{{userId}}
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "displayName": "Alice A.",
+  "role": "User",
+  "password": null
+}
+
+### Delete a user (cascades to their todos; you cannot delete yourself)
+DELETE {{TodoApi.Api_HostAddress}}/api/users/{{userId}}
+Authorization: Bearer {{token}}
+
+### ─── Todos (any signed-in user; non-admins see only their own) ───────────
 ### List todos (optional filters: isCompleted, page, pageSize)
 GET {{TodoApi.Api_HostAddress}}/api/todos?page=1&pageSize=20
-Accept: application/json
+Authorization: Bearer {{token}}
 
 ### List only open todos
 GET {{TodoApi.Api_HostAddress}}/api/todos?isCompleted=false
-Accept: application/json
+Authorization: Bearer {{token}}
 
 ### Get one todo
 GET {{TodoApi.Api_HostAddress}}/api/todos/{{id}}
-Accept: application/json
+Authorization: Bearer {{token}}
 
-### Create a todo
+### Create a todo (owner = the caller)
 POST {{TodoApi.Api_HostAddress}}/api/todos
 Content-Type: application/json
+Authorization: Bearer {{token}}
 
 {
   "title": "Buy milk",
@@ -26,6 +93,7 @@ Content-Type: application/json
 ### Update a todo (full replace)
 PUT {{TodoApi.Api_HostAddress}}/api/todos/{{id}}
 Content-Type: application/json
+Authorization: Bearer {{token}}
 
 {
   "title": "Buy oat milk",
@@ -36,8 +104,10 @@ Content-Type: application/json
 
 ### Mark a todo as completed
 PATCH {{TodoApi.Api_HostAddress}}/api/todos/{{id}}/complete
+Authorization: Bearer {{token}}
 
 ### Delete a todo
 DELETE {{TodoApi.Api_HostAddress}}/api/todos/{{id}}
+Authorization: Bearer {{token}}
 
 ###

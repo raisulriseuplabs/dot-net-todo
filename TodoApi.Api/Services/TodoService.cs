@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using TodoApi.Api.Auth;
 using TodoApi.Api.Data;
 using TodoApi.Api.Dtos;
 using TodoApi.Api.Models;
@@ -7,14 +8,11 @@ namespace TodoApi.Api.Services;
 
 public class TodoService(TodoDbContext db) : ITodoService
 {
-    public const int MaxPageSize = 100;
-
-    public async Task<PagedResponse<TodoResponse>> GetAllAsync(bool? isCompleted, int page, int pageSize, CancellationToken ct)
+    public async Task<PagedResponse<TodoResponse>> GetAllAsync(CurrentUser user, bool? isCompleted, int page, int pageSize, CancellationToken ct)
     {
-        page = Math.Max(page, 1);
-        pageSize = Math.Clamp(pageSize, 1, MaxPageSize);
+        (page, pageSize) = Paging.Normalize(page, pageSize);
 
-        var query = db.Todos.AsNoTracking();
+        var query = VisibleTo(user).AsNoTracking();
         if (isCompleted is { } completed)
         {
             query = query.Where(t => t.IsCompleted == completed);
@@ -31,13 +29,13 @@ public class TodoService(TodoDbContext db) : ITodoService
         return new PagedResponse<TodoResponse>(items, page, pageSize, totalCount);
     }
 
-    public async Task<TodoResponse?> GetByIdAsync(int id, CancellationToken ct)
+    public async Task<TodoResponse?> GetByIdAsync(CurrentUser user, int id, CancellationToken ct)
     {
-        var todo = await db.Todos.AsNoTracking().FirstOrDefaultAsync(t => t.Id == id, ct);
+        var todo = await VisibleTo(user).AsNoTracking().FirstOrDefaultAsync(t => t.Id == id, ct);
         return todo is null ? null : TodoResponse.FromEntity(todo);
     }
 
-    public async Task<TodoResponse> CreateAsync(CreateTodoRequest request, CancellationToken ct)
+    public async Task<TodoResponse> CreateAsync(CurrentUser user, CreateTodoRequest request, CancellationToken ct)
     {
         var now = DateTime.UtcNow;
         var todo = new TodoItem
@@ -46,6 +44,7 @@ public class TodoService(TodoDbContext db) : ITodoService
             Description = request.Description,
             DueDate = request.DueDate,
             IsCompleted = false,
+            OwnerId = user.Id,
             CreatedAt = now,
             UpdatedAt = now,
         };
@@ -55,9 +54,9 @@ public class TodoService(TodoDbContext db) : ITodoService
         return TodoResponse.FromEntity(todo);
     }
 
-    public async Task<bool> UpdateAsync(int id, UpdateTodoRequest request, CancellationToken ct)
+    public async Task<bool> UpdateAsync(CurrentUser user, int id, UpdateTodoRequest request, CancellationToken ct)
     {
-        var todo = await db.Todos.FindAsync([id], ct);
+        var todo = await VisibleTo(user).FirstOrDefaultAsync(t => t.Id == id, ct);
         if (todo is null)
         {
             return false;
@@ -73,9 +72,9 @@ public class TodoService(TodoDbContext db) : ITodoService
         return true;
     }
 
-    public async Task<bool> CompleteAsync(int id, CancellationToken ct)
+    public async Task<bool> CompleteAsync(CurrentUser user, int id, CancellationToken ct)
     {
-        var todo = await db.Todos.FindAsync([id], ct);
+        var todo = await VisibleTo(user).FirstOrDefaultAsync(t => t.Id == id, ct);
         if (todo is null)
         {
             return false;
@@ -91,9 +90,16 @@ public class TodoService(TodoDbContext db) : ITodoService
         return true;
     }
 
-    public async Task<bool> DeleteAsync(int id, CancellationToken ct)
+    public async Task<bool> DeleteAsync(CurrentUser user, int id, CancellationToken ct)
     {
-        var deleted = await db.Todos.Where(t => t.Id == id).ExecuteDeleteAsync(ct);
+        var deleted = await VisibleTo(user).Where(t => t.Id == id).ExecuteDeleteAsync(ct);
         return deleted > 0;
     }
+
+    /// <summary>
+    /// Admins see every todo; everyone else only their own. A todo outside this set behaves as if it
+    /// does not exist (404), so callers cannot probe for other users' ids.
+    /// </summary>
+    private IQueryable<TodoItem> VisibleTo(CurrentUser user) =>
+        user.IsAdmin ? db.Todos : db.Todos.Where(t => t.OwnerId == user.Id);
 }
