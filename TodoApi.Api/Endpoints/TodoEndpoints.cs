@@ -14,8 +14,14 @@ public static class TodoEndpoints
 
         group.MapGet("/", GetAll).WithName("GetTodos");
         group.MapGet("/{id:int}", GetById).WithName("GetTodoById");
-        group.MapPost("/", Create).WithName("CreateTodo");
-        group.MapPut("/{id:int}", Update).WithName("UpdateTodo");
+        group.MapPost("/", Create)
+            .WithName("CreateTodo")
+            .AddEndpointFilter<ValidationFilter<CreateTodoRequest>>()
+            .ProducesValidationProblem();
+        group.MapPut("/{id:int}", Update)
+            .WithName("UpdateTodo")
+            .AddEndpointFilter<ValidationFilter<UpdateTodoRequest>>()
+            .ProducesValidationProblem();
         group.MapPatch("/{id:int}/complete", Complete).WithName("CompleteTodo");
         group.MapDelete("/{id:int}", Delete).WithName("DeleteTodo");
 
