@@ -7,6 +7,11 @@ public class TodoDbContext(DbContextOptions<TodoDbContext> options) : DbContext(
 {
     public DbSet<TodoItem> Todos => Set<TodoItem>();
 
+    protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
+    {
+        configurationBuilder.Properties<DateTime>().HaveConversion<UtcDateTimeConverter>();
+    }
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<TodoItem>(todo =>

@@ -1,7 +1,43 @@
 @TodoApi.Api_HostAddress = http://localhost:5000
+@id = 1
 
-# Endpoints are added in Phase 3.
-GET {{TodoApi.Api_HostAddress}}/swagger/v1/swagger.json
+### List todos (optional filters: isCompleted, page, pageSize)
+GET {{TodoApi.Api_HostAddress}}/api/todos?page=1&pageSize=20
 Accept: application/json
+
+### List only open todos
+GET {{TodoApi.Api_HostAddress}}/api/todos?isCompleted=false
+Accept: application/json
+
+### Get one todo
+GET {{TodoApi.Api_HostAddress}}/api/todos/{{id}}
+Accept: application/json
+
+### Create a todo
+POST {{TodoApi.Api_HostAddress}}/api/todos
+Content-Type: application/json
+
+{
+  "title": "Buy milk",
+  "description": "2 litres, semi-skimmed",
+  "dueDate": "2026-09-20T09:00:00Z"
+}
+
+### Update a todo (full replace)
+PUT {{TodoApi.Api_HostAddress}}/api/todos/{{id}}
+Content-Type: application/json
+
+{
+  "title": "Buy oat milk",
+  "description": null,
+  "isCompleted": false,
+  "dueDate": null
+}
+
+### Mark a todo as completed
+PATCH {{TodoApi.Api_HostAddress}}/api/todos/{{id}}/complete
+
+### Delete a todo
+DELETE {{TodoApi.Api_HostAddress}}/api/todos/{{id}}
 
 ###
