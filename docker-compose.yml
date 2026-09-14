@@ -1,0 +1,19 @@
+services:
+  api:
+    build: .
+    image: todo-api:latest
+    container_name: todo-api
+    ports:
+      - "8080:8080"
+    environment:
+      # Secrets come from .env (copy .env.example). The :? form fails fast with a message if unset.
+      Jwt__Key: ${JWT_KEY:?Set JWT_KEY in .env (at least 32 characters)}
+      Seed__AdminEmail: ${ADMIN_EMAIL:-admin@todo.local}
+      Seed__AdminPassword: ${ADMIN_PASSWORD:?Set ADMIN_PASSWORD in .env}
+      Swagger__Enabled: ${SWAGGER_ENABLED:-true}
+    volumes:
+      - todo-data:/app/data
+    restart: unless-stopped
+
+volumes:
+  todo-data:

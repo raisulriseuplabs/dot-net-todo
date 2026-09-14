@@ -14,6 +14,7 @@ builder.Services.AddDbContext<TodoDbContext>(options =>
 builder.Services.AddJwtAuthentication(builder.Configuration);
 builder.Services.AddApplicationServices();
 builder.Services.AddProblemDetails();
+builder.Services.AddHealthChecks();
 builder.Services.ConfigureHttpJsonOptions(options =>
     options.SerializerOptions.Converters.Add(new JsonStringEnumConverter()));
 // Development defaults this to true, turning body-binding failures into exceptions (-> 500 via
@@ -27,17 +28,17 @@ app.UseStatusCodePages();
 app.UseAuthentication();
 app.UseAuthorization();
 
-if (app.Environment.IsDevelopment())
+// Swagger is on in Development; elsewhere opt in with Swagger__Enabled=true (the compose file does).
+if (app.Environment.IsDevelopment() || app.Configuration.GetValue<bool>("Swagger:Enabled"))
 {
     app.UseSwagger();
     app.UseSwaggerUI();
-
-    using var scope = app.Services.CreateScope();
-    await scope.ServiceProvider.GetRequiredService<TodoDbContext>().Database.MigrateAsync();
 }
 
+await app.ApplyMigrationsAsync();
 await app.SeedAdminAsync();
 
+app.MapHealthChecks("/health");
 app.MapAuthEndpoints();
 app.MapUsersEndpoints();
 app.MapTodoEndpoints();

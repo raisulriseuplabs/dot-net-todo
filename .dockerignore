@@ -1,0 +1,12 @@
+**/bin/
+**/obj/
+**/*.db
+**/*.db-*
+.git/
+.config/
+docs/
+*.md
+.env
+.env.*
+dotnet.sh
+TodoApi.Tests/

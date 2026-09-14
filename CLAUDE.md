@@ -11,7 +11,7 @@ This file is the source of truth for how to build, test, and extend the project.
 - [x] Phase 3 — Endpoints
 - [x] Phase 4 — Validation + error handling
 - [ ] Phase 5 — Tests
-- [ ] Phase 6 — Docker + docs
+- [x] Phase 6 — Docker + docs
 - [x] Phase 7 — Users, JWT authentication, RBAC (done before 5/6 at the owner's request)
 
 Tick a phase only after its checkpoint passes. Update this list when you finish a phase.
@@ -24,9 +24,10 @@ Tick a phase only after its checkpoint passes. Update this list when you finish 
 | Web          | ASP.NET Core Minimal APIs (no controllers)    |
 | Data         | EF Core 8 + SQLite (`todo.db` in project root, gitignored) |
 | Validation   | FluentValidation                              |
-| Docs         | Swashbuckle (Swagger UI at `/swagger` in Development) |
+| Docs         | Swashbuckle (Swagger UI at `/swagger` in Development, or anywhere with `Swagger__Enabled=true`) |
 | Tests        | xUnit + `WebApplicationFactory<Program>` + SQLite in-memory |
-| Container    | Multi-stage Dockerfile, `docker compose up`   |
+| Container    | Multi-stage `Dockerfile` (sdk:8.0 build → aspnet:8.0, non-root `app` user, port 8080); `docker compose up` with `todo-data` volume and secrets from `.env` |
+| Migrations   | Applied on startup in **every** environment (`ApplyMigrationsAsync`) — fine for one instance over SQLite; revisit if replicas or a server DB appear |
 | EF tooling   | `dotnet-ef` 8.x as a *local* tool (`.config/dotnet-tools.json`), not global |
 | Auth         | JWT bearer (`Microsoft.AspNetCore.Authentication.JwtBearer`), HS256, passwords via built-in `PasswordHasher<User>`. **Not** ASP.NET Identity. |
 | Roles        | `UserRole` enum: `User`, `Admin`. Policy `AuthConstants.AdminPolicy` = `RequireRole("Admin")`. |
@@ -57,8 +58,10 @@ dot-net-api/
 ├── README.md
 ├── TodoApi.sln
 ├── .gitignore                  # from `dotnet new gitignore`
-├── Dockerfile
-├── docker-compose.yml
+├── Dockerfile                  # multi-stage build; publishes only TodoApi.Api
+├── .dockerignore
+├── docker-compose.yml          # api service on 8080, todo-data volume, env from .env
+├── .env.example                # copy to .env (gitignored): JWT_KEY, ADMIN_EMAIL, ADMIN_PASSWORD, SWAGGER_ENABLED
 ├── TodoApi.Api/
 │   ├── Program.cs              # composition root only — keep it short
 │   ├── TodoApi.Api.http        # manual request samples for VS Code (login first; token auto-fills)
@@ -66,7 +69,7 @@ dot-net-api/
 │   ├── Dtos/                   # request/response records; never entities
 │   ├── Auth/                   # JwtOptions, AuthConstants, CurrentUser, ClaimsPrincipalExtensions,
 │   │                           # AuthenticationExtensions (AddJwtAuthentication, AddSwaggerWithJwt)
-│   ├── Data/TodoDbContext.cs, UtcDateTimeConverter.cs, DbSeeder.cs (first admin)
+│   ├── Data/TodoDbContext.cs, UtcDateTimeConverter.cs, DbSeeder.cs (first admin), MigrationExtensions.cs
 │   ├── Data/Migrations/
 │   ├── Services/               # ITodoService/TodoService, IUserService/UserService,
 │   │                           # ITokenService/TokenService, Paging, UserResult/UserError,
@@ -90,7 +93,9 @@ dot-net-api/
 ./dotnet.sh ef database update --project TodoApi.Api         # apply migrations
 ./dotnet.sh format                                  # format before committing
 ./dotnet.sh tool restore                            # if `ef` says the tool is missing
-docker compose up --build                           # run the published image (Phase 6)
+docker compose up --build -d                        # build image + run on http://localhost:8080 (needs .env)
+docker compose logs -f api                          # container logs
+docker compose down [-v]                            # stop; -v also deletes the todo-data volume
 ```
 
 Stop a running `./dotnet.sh run` with Ctrl-C; if a container is left behind, `docker ps` + `docker stop <id>`.
@@ -128,6 +133,7 @@ Every route except `/api/auth/*` requires `Authorization: Bearer <token>` (401 w
 | GET    | `/api/todos?isCompleted=&page=&pageSize=` | 200 `PagedResponse<TodoResponse>` | — |
 | GET    | `/api/todos/{id}`           | 200     | 404           |
 | POST   | `/api/todos`                | 201 + `Location` (owner = caller) | 400 validation |
+| GET    | `/health` (anonymous)       | 200 `Healthy` | — |
 | PUT    | `/api/todos/{id}`           | 204     | 400, 404      |
 | PATCH  | `/api/todos/{id}/complete`  | 204 (idempotent) | 404  |
 | DELETE | `/api/todos/{id}`           | 204     | 404           |
@@ -193,6 +199,7 @@ Each phase ends with a checkpoint. Do not start the next phase until the checkpo
 3. Register `TodoDbContext` in `Program.cs` with connection string `Data Source=todo.db` from `appsettings.json`
 4. `./dotnet.sh ef migrations add InitialCreate --project TodoApi.Api`; apply migrations automatically on startup in Development only
 - Checkpoint: `./dotnet.sh build` clean, `todo.db` created on `./dotnet.sh run`, migration folder committed.
+  (Migrations now apply on startup in all environments — see `MigrationExtensions`.)
 
 ### Phase 3 — Endpoints
 1. `Services/ITodoService.cs` + `TodoService.cs` (all CRUD ops, async, EF-backed)
@@ -215,12 +222,12 @@ Each phase ends with a checkpoint. Do not start the next phase until the checkpo
 4. Add `Microsoft.AspNetCore.Mvc.Testing` package to the test project
 - Checkpoint: `./dotnet.sh test` green, ≥12 tests, no test depends on execution order.
 
-### Phase 6 — Docker + docs
-1. Multi-stage `Dockerfile` (sdk:8.0 build → aspnet:8.0 runtime), expose 8080
-2. `docker-compose.yml` mounting a volume for `todo.db`; pass `Jwt__Key`, `Seed__AdminEmail`, `Seed__AdminPassword` as env vars
-3. Decide how migrations run outside Development (startup `MigrateAsync` or a one-off `ef database update`) — today they only auto-apply in Development
-4. Update `README.md`: what it is, how to run locally, how to run with Docker, curl examples, how to test
-- Checkpoint: `docker compose up --build` serves the API on `http://localhost:8080/api/todos` and login works with the env-var admin.
+### Phase 6 — Docker + docs  ✅ done
+1. Multi-stage `Dockerfile`: restore layer cached on the .csproj, `dotnet publish -c Release`, runtime image runs as `app` (uid 1654), `/app/data` owned by it
+2. `docker-compose.yml`: `todo-data` volume on `/app/data`, `Jwt__Key`/`Seed__*`/`Swagger__Enabled` interpolated from `.env` with `${VAR:?message}` so a missing secret fails at `compose up` with a readable error
+3. Migrations moved out of the Development block into `ApplyMigrationsAsync()` (logs which ones ran); `/health` endpoint; `Swagger:Enabled` config toggle
+4. `README.md` rewritten: Docker quick start, curl walkthrough, endpoint table, env vars, dev loop
+- Checkpoint verified: image 385 MB; `docker compose up --build -d` → `/health` 200, both migrations applied, admin seeded, login + todo creation work on :8080, data survives `restart` and `down`/`up` with no re-migration or re-seed, process is non-root, missing `.env` values fail fast.
 
 ### Phase 7 — Users, JWT auth, RBAC  ✅ done
 1. `User` entity + `UserRole` enum; `TodoItem.OwnerId` FK with cascade delete; migration `AddUsersAndTodoOwner`
