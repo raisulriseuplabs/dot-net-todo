@@ -1,0 +1,687 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>TodoApi System Map</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Serif:wght@600&display=swap">
+<style>
+  :root {
+    --bg: #F4F6F9;
+    --surface: #FFFFFF;
+    --surface-2: #ECF0F5;
+    --ink: #1A212B;
+    --ink-soft: #46515E;
+    --muted: #6B7785;
+    --line: #D3D9E1;
+    --line-strong: #A9B3BF;
+    --accent: #3E42B5;
+    --accent-ink: #FFFFFF;
+    --accent-soft: #E6E7F8;
+    --ok: #1E7F49;
+    --warn: #A9640A;
+    --err: #B93A3A;
+    --chip-ink: #FFFFFF;
+    --sans: "IBM Plex Sans", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    --serif: "IBM Plex Serif", Georgia, "Times New Roman", serif;
+    --mono: "IBM Plex Mono", "SFMono-Regular", Menlo, Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #12161C; --surface: #1A2029; --surface-2: #222A35;
+      --ink: #E7EBF1; --ink-soft: #B6BFCB; --muted: #8C97A5;
+      --line: #2C3542; --line-strong: #465364;
+      --accent: #9EA3FF; --accent-ink: #12161C; --accent-soft: #272C4C;
+      --ok: #5BCF86; --warn: #F1B75A; --err: #F28B8B; --chip-ink: #12161C;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #12161C; --surface: #1A2029; --surface-2: #222A35;
+    --ink: #E7EBF1; --ink-soft: #B6BFCB; --muted: #8C97A5;
+    --line: #2C3542; --line-strong: #465364;
+    --accent: #9EA3FF; --accent-ink: #12161C; --accent-soft: #272C4C;
+    --ok: #5BCF86; --warn: #F1B75A; --err: #F28B8B; --chip-ink: #12161C;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding-inline: 20px;
+    padding-block: 0 64px;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 15px;
+    line-height: 1.55;
+  }
+  .wrap { max-width: 1000px; margin-inline: auto; }
+
+  header.top {
+    padding-block: 44px 28px;
+    border-bottom: 1px solid var(--line);
+    display: grid;
+    gap: 14px;
+  }
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: 11.5px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  h1 {
+    font-family: var(--serif);
+    font-weight: 600;
+    font-size: clamp(30px, 4.5vw, 42px);
+    line-height: 1.1;
+    margin: 0;
+    text-wrap: balance;
+  }
+  .lede { max-width: 68ch; margin: 0; color: var(--ink-soft); font-size: 16px; }
+
+  .phases { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; }
+  .phase {
+    font-family: var(--mono); font-size: 11.5px;
+    padding: 4px 10px; border-radius: 999px;
+    border: 1px solid var(--line-strong);
+    color: var(--ink-soft);
+    white-space: nowrap;
+  }
+  .phase.done { background: var(--accent-soft); border-color: transparent; color: var(--ink); }
+  .phase.done::before { content: "✓ "; color: var(--accent); }
+  .phase.todo { border-style: dashed; color: var(--muted); }
+
+  section { padding-block: 36px 8px; }
+  h2 {
+    font-family: var(--serif);
+    font-weight: 600;
+    font-size: 24px;
+    line-height: 1.2;
+    margin: 0 0 6px;
+    text-wrap: balance;
+  }
+  h3 { font-size: 15px; font-weight: 600; margin: 24px 0 8px; }
+  p { max-width: 68ch; margin: 0 0 12px; }
+  p.intro { color: var(--ink-soft); margin-bottom: 20px; }
+  code {
+    font-family: var(--mono);
+    font-size: 0.9em;
+    background: var(--surface-2);
+    padding: 1px 5px;
+    border-radius: 3px;
+  }
+  pre {
+    font-family: var(--mono);
+    font-size: 13px;
+    line-height: 1.6;
+    background: var(--surface-2);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 12px 16px;
+    overflow-x: auto;
+    margin: 0 0 16px;
+  }
+  pre code { background: none; padding: 0; font-size: inherit; }
+
+  figure {
+    margin: 0 0 20px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 16px 16px 12px;
+  }
+  figure svg { display: block; width: 100%; height: auto; color: var(--ink-soft); }
+  figcaption {
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid var(--line);
+    font-size: 13.5px;
+    color: var(--ink-soft);
+    max-width: 80ch;
+  }
+  figcaption strong { color: var(--ink); font-weight: 600; }
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  @media (max-width: 760px) { .two { grid-template-columns: 1fr; } }
+  .two figure { margin: 0; }
+  .cap { font-size: 13.5px; color: var(--ink-soft); max-width: 80ch; margin: -6px 0 20px; }
+
+  /* SVG vocabulary */
+  .box { fill: var(--surface); stroke: var(--line-strong); stroke-width: 1.2; }
+  .box.emph { stroke: var(--accent); stroke-width: 1.6; }
+  .box.zone { fill: var(--surface-2); stroke: var(--line); }
+  .box.planned { stroke-dasharray: 5 4; }
+  .ln { stroke: currentColor; stroke-width: 1.3; fill: none; }
+  .ln.planned { stroke-dasharray: 5 4; }
+  .ln.ret { stroke-dasharray: 4 3; }
+  .life { stroke: var(--line-strong); stroke-width: 1; stroke-dasharray: 3 4; }
+  .lead { stroke: var(--line); stroke-width: 1; }
+  .t { font-family: var(--sans); font-size: 12px; fill: var(--ink); font-weight: 500; }
+  .t.s { font-weight: 400; fill: var(--ink-soft); font-size: 11.5px; }
+  .m { font-family: var(--mono); font-size: 10.5px; fill: var(--ink-soft); }
+  .m.x { font-size: 10px; }
+  .m.k { fill: var(--ink); }
+  .halo { paint-order: stroke; stroke: var(--surface); stroke-width: 5px; stroke-linejoin: round; }
+  .zone-t { font-family: var(--mono); font-size: 10.5px; fill: var(--muted); letter-spacing: 0.04em; }
+  .chip { rx: 3; }
+  .chip.ok { fill: var(--ok); } .chip.warn { fill: var(--warn); } .chip.err { fill: var(--err); }
+  .chip-t { font-family: var(--mono); font-size: 10px; font-weight: 500; fill: var(--chip-ink); }
+  .st-ok { fill: var(--ok); } .st-warn { fill: var(--warn); } .st-err { fill: var(--err); }
+  .acc { fill: var(--accent); }
+
+  /* tables */
+  .tbl { overflow-x: auto; margin: 0 0 20px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); }
+  table { border-collapse: collapse; width: 100%; font-size: 13.5px; }
+  th, td { text-align: left; vertical-align: top; padding: 9px 12px; border-bottom: 1px solid var(--line); }
+  th {
+    font-family: var(--mono); font-weight: 500; font-size: 11px;
+    letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted);
+    background: var(--surface-2);
+  }
+  tr:last-child td { border-bottom: 0; }
+  td code { white-space: nowrap; }
+  .status {
+    display: inline-block; font-family: var(--mono); font-size: 11px; font-weight: 500;
+    color: var(--chip-ink); padding: 1px 7px; border-radius: 3px; margin-right: 4px;
+    font-variant-numeric: tabular-nums;
+  }
+  .status.ok { background: var(--ok); } .status.warn { background: var(--warn); } .status.err { background: var(--err); }
+  .num { font-variant-numeric: tabular-nums; }
+  .cmd { display: grid; grid-template-columns: max-content 1fr; gap: 6px 18px; font-size: 14px; margin: 0 0 16px; }
+  .cmd code { white-space: nowrap; }
+  @media (max-width: 560px) { .cmd { grid-template-columns: 1fr; gap: 2px 0; } .cmd span { margin-bottom: 8px; } }
+  a { color: var(--accent); }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="top">
+  <div class="eyebrow">ASP.NET Core 8 · Minimal API · EF Core · SQLite · Docker-only toolchain</div>
+  <h1>TodoApi System Map</h1>
+  <p class="lede">How a request travels from <code>curl</code> to <code>todo.db</code> and back, where each status code is decided, and how the project runs without a .NET SDK on the host.</p>
+  <div class="phases" aria-label="Phase status">
+    <span class="phase done">0 Environment</span>
+    <span class="phase done">1 Scaffold</span>
+    <span class="phase done">2 Persistence</span>
+    <span class="phase done">3 Endpoints</span>
+    <span class="phase done">4 Validation &amp; errors</span>
+    <span class="phase todo">5 Tests</span>
+    <span class="phase todo">6 Docker runtime</span>
+  </div>
+</header>
+
+<!-- ============ 1. TOPOLOGY ============ -->
+<section>
+  <h2>Where it runs</h2>
+  <p class="intro">Today the API runs inside the SDK container that <code>./dotnet.sh</code> starts; Phase 6 will publish it into a slim runtime image. The application code is identical in both — only the container around it changes.</p>
+
+  <div class="two">
+  <figure>
+    <svg viewBox="0 0 480 330" role="img" aria-label="Development topology: the developer shell starts an SDK container via dotnet.sh; an HTTP client reaches Kestrel on port 5000; the app reads and writes todo.db inside the bind-mounted repo; three host folders are mounted into the container.">
+      <defs>
+        <marker id="a1" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="currentColor"/></marker>
+        <marker id="a1s" markerWidth="8" markerHeight="8" refX="1" refY="4" orient="auto"><path d="M8,0 L0,4 L8,8 z" fill="currentColor"/></marker>
+      </defs>
+      <text x="16" y="12" class="zone-t">NOW · DEVELOPMENT</text>
+
+      <!-- host boxes -->
+      <rect x="16" y="24" width="130" height="48" class="box"/>
+      <text x="81" y="44" text-anchor="middle" class="t">Developer shell</text>
+      <text x="81" y="61" text-anchor="middle" class="m">./dotnet.sh run</text>
+
+      <rect x="16" y="120" width="130" height="56" class="box"/>
+      <text x="81" y="142" text-anchor="middle" class="t">HTTP client</text>
+      <text x="81" y="160" text-anchor="middle" class="m x">curl · Swagger UI · .http</text>
+
+      <!-- container -->
+      <rect x="190" y="16" width="274" height="222" class="box zone"/>
+      <text x="200" y="33" class="zone-t">sdk:8.0 container · -p 5000:5000</text>
+
+      <rect x="206" y="44" width="242" height="36" class="box"/>
+      <text x="327" y="66" text-anchor="middle" class="t">Kestrel  ·  <tspan class="m k">http://+:5000</tspan></text>
+
+      <rect x="206" y="96" width="242" height="36" class="box emph"/>
+      <text x="327" y="118" text-anchor="middle" class="t">TodoApi.Api  <tspan class="m k">(dotnet run)</tspan></text>
+
+      <rect x="206" y="160" width="242" height="56" class="box"/>
+      <text x="327" y="181" text-anchor="middle" class="m k">/src  =  repo bind mount</text>
+      <text x="327" y="201" text-anchor="middle" class="m">TodoApi.Api/todo.db  (SQLite)</text>
+
+      <line x1="327" y1="132" x2="327" y2="160" class="ln" marker-end="url(#a1)"/>
+      <text x="335" y="150" class="m x">EF Core reads / writes</text>
+
+      <!-- host filesystem -->
+      <rect x="190" y="266" width="274" height="56" class="box zone"/>
+      <text x="204" y="281" class="m x">./                          →  /src</text>
+      <text x="204" y="296" class="m x">~/.nuget/packages           →  /nuget</text>
+      <text x="204" y="311" class="m x">~/.cache/dotnet-sdk-docker  →  /home/dotnet</text>
+      <line x1="327" y1="238" x2="327" y2="266" class="ln" marker-start="url(#a1s)" marker-end="url(#a1)"/>
+      <text x="335" y="256" class="m x">bind mounts (host)</text>
+
+      <!-- arrows -->
+      <line x1="146" y1="48" x2="190" y2="48" class="ln" marker-end="url(#a1)"/>
+      <text x="168" y="42" text-anchor="middle" class="m x">starts</text>
+      <polyline points="146,148 176,148 176,62 206,62" class="ln" marker-end="url(#a1)"/>
+      <text x="171" y="104" text-anchor="end" class="m x">HTTP :5000</text>
+    </svg>
+  </figure>
+
+  <figure>
+    <svg viewBox="0 0 480 330" role="img" aria-label="Planned Phase 6 topology: docker compose starts an aspnet 8 runtime container with the published TodoApi.Api.dll; clients reach Kestrel on port 8080; todo.db lives on a named Docker volume; nothing from the repo is mounted.">
+      <defs>
+        <marker id="a2" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="currentColor"/></marker>
+        <marker id="a2s" markerWidth="8" markerHeight="8" refX="1" refY="4" orient="auto"><path d="M8,0 L0,4 L8,8 z" fill="currentColor"/></marker>
+      </defs>
+      <text x="16" y="12" class="zone-t">PHASE 6 · RUNTIME (PLANNED)</text>
+
+      <rect x="16" y="24" width="130" height="48" class="box planned"/>
+      <text x="81" y="44" text-anchor="middle" class="t">Operator</text>
+      <text x="81" y="61" text-anchor="middle" class="m">docker compose up</text>
+
+      <rect x="16" y="120" width="130" height="56" class="box"/>
+      <text x="81" y="142" text-anchor="middle" class="t">HTTP client</text>
+      <text x="81" y="160" text-anchor="middle" class="m x">any consumer</text>
+
+      <rect x="190" y="16" width="274" height="222" class="box zone planned"/>
+      <text x="200" y="33" class="zone-t">aspnet:8.0 container · -p 8080:8080</text>
+
+      <rect x="206" y="44" width="242" height="36" class="box planned"/>
+      <text x="327" y="66" text-anchor="middle" class="t">Kestrel  ·  <tspan class="m k">http://+:8080</tspan></text>
+
+      <rect x="206" y="96" width="242" height="36" class="box emph planned"/>
+      <text x="327" y="118" text-anchor="middle" class="t">TodoApi.Api.dll  <tspan class="m k">(published)</tspan></text>
+
+      <rect x="206" y="160" width="242" height="56" class="box planned"/>
+      <text x="327" y="181" text-anchor="middle" class="m k">/app/data  =  named volume</text>
+      <text x="327" y="201" text-anchor="middle" class="m">todo.db survives restarts</text>
+
+      <line x1="327" y1="132" x2="327" y2="160" class="ln planned" marker-end="url(#a2)"/>
+      <text x="335" y="150" class="m x">EF Core reads / writes</text>
+
+      <rect x="190" y="266" width="274" height="56" class="box zone planned"/>
+      <text x="204" y="281" class="m x">todo-data (docker volume)  →  /app/data</text>
+      <text x="204" y="296" class="m x">no repo mount · no SDK · no NuGet cache</text>
+      <text x="204" y="311" class="m x">built by: sdk:8.0 stage → publish → aspnet:8.0</text>
+      <line x1="327" y1="238" x2="327" y2="266" class="ln planned" marker-start="url(#a2s)" marker-end="url(#a2)"/>
+      <text x="335" y="256" class="m x">volume mount</text>
+
+      <line x1="146" y1="48" x2="190" y2="48" class="ln planned" marker-end="url(#a2)"/>
+      <text x="168" y="42" text-anchor="middle" class="m x">starts</text>
+      <polyline points="146,148 176,148 176,62 206,62" class="ln" marker-end="url(#a2)"/>
+      <text x="171" y="104" text-anchor="end" class="m x">HTTP :8080</text>
+    </svg>
+  </figure>
+  </div>
+  <p class="cap"><strong>Left, what exists today:</strong> the SDK image is the only .NET on the machine, so the app runs from source inside it and <code>todo.db</code> is an ordinary file in your working copy. <strong>Right, what Phase 6 adds (dashed):</strong> a multi-stage build so the shipped image carries only the runtime and the published DLL, with the database on a volume. Port and image change; <code>Program.cs</code> does not.</p>
+</section>
+
+<!-- ============ 2. PIPELINE ============ -->
+<section>
+  <h2>The request pipeline</h2>
+  <p class="intro">Every request descends this stack and its response climbs back up through the same layers. The two middleware at the top do nothing on the way down — they exist to reshape what comes back up.</p>
+
+  <figure>
+    <svg viewBox="0 0 780 616" role="img" aria-label="Vertical stack of the request pipeline from client to SQLite, with the status codes each layer can produce: UseExceptionHandler 500; UseStatusCodePages 400, 404, 415; Routing 404; ValidationFilter 400; endpoint handlers 200, 201, 204, 404.">
+      <defs>
+        <marker id="a3" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="currentColor"/></marker>
+      </defs>
+
+      <!-- row 1: client -->
+      <rect x="40" y="16" width="330" height="40" class="box"/>
+      <text x="52" y="33" class="t">Client</text>
+      <text x="52" y="48" class="m">curl · Swagger UI · TodoApi.http</text>
+      <line x1="370" y1="36" x2="394" y2="36" class="lead"/>
+      <text x="400" y="32" class="t s">sends HTTP to localhost:5000</text>
+      <text x="400" y="49" class="m">Phase 5 tests will call in-process via WebApplicationFactory</text>
+      <line x1="205" y1="56" x2="205" y2="76" class="ln" marker-end="url(#a3)"/>
+      <text x="212" y="70" class="m x">request</text>
+
+      <!-- row 2: kestrel -->
+      <rect x="40" y="76" width="330" height="40" class="box"/>
+      <text x="52" y="93" class="t">Kestrel</text>
+      <text x="52" y="108" class="m">http://+:5000 · Development · HTTP only</text>
+      <line x1="370" y1="96" x2="394" y2="96" class="lead"/>
+      <text x="400" y="92" class="t s">no HTTPS or dev certificate inside the container</text>
+      <text x="400" y="109" class="m">published by ./dotnet.sh run as -p 5000:5000</text>
+      <line x1="205" y1="116" x2="205" y2="136" class="ln" marker-end="url(#a3)"/>
+
+      <!-- row 3: exception handler -->
+      <rect x="40" y="136" width="330" height="40" class="box"/>
+      <text x="52" y="153" class="t">UseExceptionHandler</text>
+      <text x="52" y="168" class="m">Program.cs · outermost middleware</text>
+      <line x1="370" y1="156" x2="394" y2="156" class="lead"/>
+      <rect x="400" y="140" width="30" height="16" class="chip err"/><text x="415" y="152" text-anchor="middle" class="chip-t">500</text>
+      <text x="436" y="152" class="t s">any unhandled exception</text>
+      <text x="400" y="169" class="m">generic ProblemDetails — exception text never leaves the server</text>
+      <line x1="205" y1="176" x2="205" y2="196" class="ln" marker-end="url(#a3)"/>
+
+      <!-- row 4: status code pages -->
+      <rect x="40" y="196" width="330" height="40" class="box"/>
+      <text x="52" y="213" class="t">UseStatusCodePages</text>
+      <text x="52" y="228" class="m">Program.cs · needs AddProblemDetails()</text>
+      <line x1="370" y1="216" x2="394" y2="216" class="lead"/>
+      <rect x="400" y="200" width="30" height="16" class="chip warn"/><text x="415" y="212" text-anchor="middle" class="chip-t">400</text>
+      <rect x="434" y="200" width="30" height="16" class="chip warn"/><text x="449" y="212" text-anchor="middle" class="chip-t">404</text>
+      <rect x="468" y="200" width="30" height="16" class="chip warn"/><text x="483" y="212" text-anchor="middle" class="chip-t">415</text>
+      <text x="504" y="212" class="t s">empty error responses</text>
+      <text x="400" y="229" class="m">gives bare status codes (binding, NotFound) an RFC 7807 body</text>
+      <line x1="205" y1="236" x2="205" y2="256" class="ln" marker-end="url(#a3)"/>
+
+      <!-- row 5: routing -->
+      <rect x="40" y="256" width="330" height="40" class="box"/>
+      <text x="52" y="273" class="t">Routing</text>
+      <text x="52" y="288" class="m">MapGroup("/api/todos") · /swagger in Development</text>
+      <line x1="370" y1="276" x2="394" y2="276" class="lead"/>
+      <rect x="400" y="260" width="30" height="16" class="chip warn"/><text x="415" y="272" text-anchor="middle" class="chip-t">404</text>
+      <text x="436" y="272" class="t s">no matching route</text>
+      <text x="400" y="289" class="m">constraint {id:int} — /api/todos/abc is 404, not 400</text>
+      <line x1="205" y1="296" x2="205" y2="316" class="ln" marker-end="url(#a3)"/>
+
+      <!-- row 6: validation filter -->
+      <rect x="40" y="316" width="330" height="40" class="box"/>
+      <text x="52" y="333" class="t">ValidationFilter&lt;T&gt;</text>
+      <text x="52" y="348" class="m">POST and PUT only · Endpoints/ValidationFilter.cs</text>
+      <line x1="370" y1="336" x2="394" y2="336" class="lead"/>
+      <rect x="400" y="320" width="30" height="16" class="chip warn"/><text x="415" y="332" text-anchor="middle" class="chip-t">400</text>
+      <text x="436" y="332" class="t s">FluentValidation fails, or body is null</text>
+      <text x="400" y="349" class="m">ValidationProblemDetails: errors.Title, errors.Description</text>
+      <line x1="205" y1="356" x2="205" y2="376" class="ln" marker-end="url(#a3)"/>
+
+      <!-- row 7: handlers -->
+      <rect x="40" y="376" width="330" height="40" class="box emph"/>
+      <text x="52" y="393" class="t">Endpoint handlers</text>
+      <text x="52" y="408" class="m">Endpoints/TodoEndpoints.cs · TypedResults</text>
+      <line x1="370" y1="396" x2="394" y2="396" class="lead"/>
+      <rect x="400" y="380" width="30" height="16" class="chip ok"/><text x="415" y="392" text-anchor="middle" class="chip-t">200</text>
+      <rect x="434" y="380" width="30" height="16" class="chip ok"/><text x="449" y="392" text-anchor="middle" class="chip-t">201</text>
+      <rect x="468" y="380" width="30" height="16" class="chip ok"/><text x="483" y="392" text-anchor="middle" class="chip-t">204</text>
+      <rect x="502" y="380" width="30" height="16" class="chip warn"/><text x="517" y="392" text-anchor="middle" class="chip-t">404</text>
+      <text x="538" y="392" class="t s">status decided here</text>
+      <text x="400" y="409" class="m">201 → Location via CreatedAtRoute · null from service ⇒ NotFound()</text>
+      <line x1="205" y1="416" x2="205" y2="436" class="ln" marker-end="url(#a3)"/>
+
+      <!-- row 8: service -->
+      <rect x="40" y="436" width="330" height="40" class="box"/>
+      <text x="52" y="453" class="t">TodoService : ITodoService</text>
+      <text x="52" y="468" class="m">Services/ · scoped per request</text>
+      <line x1="370" y1="456" x2="394" y2="456" class="lead"/>
+      <text x="400" y="452" class="t s">business rules, no HTTP knowledge</text>
+      <text x="400" y="469" class="m">pageSize clamped 1–100 · timestamps = UtcNow · DTO ↔ entity</text>
+      <line x1="205" y1="476" x2="205" y2="496" class="ln" marker-end="url(#a3)"/>
+
+      <!-- row 9: dbcontext -->
+      <rect x="40" y="496" width="330" height="40" class="box"/>
+      <text x="52" y="513" class="t">TodoDbContext</text>
+      <text x="52" y="528" class="m">EF Core 8 · Data/ · UseSqlite(...)</text>
+      <line x1="370" y1="516" x2="394" y2="516" class="lead"/>
+      <text x="400" y="512" class="t s">LINQ → SQL, change tracking</text>
+      <text x="400" y="529" class="m">UtcDateTimeConverter on every DateTime · ExecuteDelete for DELETE</text>
+      <line x1="205" y1="536" x2="205" y2="556" class="ln" marker-end="url(#a3)"/>
+
+      <!-- row 10: sqlite -->
+      <rect x="40" y="556" width="330" height="40" class="box"/>
+      <text x="52" y="573" class="t">SQLite</text>
+      <text x="52" y="588" class="m">TodoApi.Api/todo.db · bind-mounted from host</text>
+      <line x1="370" y1="576" x2="394" y2="576" class="lead"/>
+      <text x="400" y="572" class="t s">tables: Todos, __EFMigrationsHistory</text>
+      <text x="400" y="589" class="m">MigrateAsync() on startup in Development only</text>
+    </svg>
+    <figcaption><strong>Status codes are decided in exactly three places</strong> — the validation filter (400), the handlers (2xx/404) and the exception handler (500) — and <code>UseStatusCodePages</code> only dresses bare codes in a ProblemDetails body on the way back out. <code>ThrowOnBadRequest</code> is switched off so a malformed body is a plain 400 in every environment instead of an exception that would surface as 500 in Development.</figcaption>
+  </figure>
+</section>
+
+<!-- ============ 3. SEQUENCE ============ -->
+<section>
+  <h2>One write, end to end</h2>
+  <p class="intro"><code>POST /api/todos</code> is the request that touches every component. The dashed returns show where it can stop early.</p>
+
+  <figure>
+    <svg viewBox="0 0 950 470" role="img" aria-label="Sequence diagram for POST /api/todos: the client sends JSON; binding can return 400 or 415; the validation filter can return 400 ValidationProblemDetails; otherwise the Create handler calls TodoService.CreateAsync, which inserts into SQLite, receives the new id, and the handler returns 201 Created with a Location header.">
+      <defs>
+        <marker id="a4" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="currentColor"/></marker>
+      </defs>
+
+      <!-- participants -->
+      <rect x="2" y="8" width="136" height="44" class="box"/>
+      <text x="70" y="26" text-anchor="middle" class="t">Client</text>
+      <text x="70" y="42" text-anchor="middle" class="m x">curl / Swagger</text>
+
+      <rect x="167" y="8" width="136" height="44" class="box"/>
+      <text x="235" y="26" text-anchor="middle" class="t">Pipeline</text>
+      <text x="235" y="42" text-anchor="middle" class="m x">middleware + binding</text>
+
+      <rect x="332" y="8" width="136" height="44" class="box"/>
+      <text x="400" y="26" text-anchor="middle" class="t">ValidationFilter</text>
+      <text x="400" y="42" text-anchor="middle" class="m x">&lt;CreateTodoRequest&gt;</text>
+
+      <rect x="497" y="8" width="136" height="44" class="box emph"/>
+      <text x="565" y="26" text-anchor="middle" class="t">Create handler</text>
+      <text x="565" y="42" text-anchor="middle" class="m x">TodoEndpoints.Create</text>
+
+      <rect x="662" y="8" width="136" height="44" class="box"/>
+      <text x="730" y="26" text-anchor="middle" class="t">TodoService</text>
+      <text x="730" y="42" text-anchor="middle" class="m x">CreateAsync</text>
+
+      <rect x="812" y="8" width="136" height="44" class="box"/>
+      <text x="880" y="26" text-anchor="middle" class="t">SQLite</text>
+      <text x="880" y="42" text-anchor="middle" class="m x">via TodoDbContext</text>
+
+      <!-- lifelines -->
+      <line x1="70" y1="52" x2="70" y2="456" class="life"/>
+      <line x1="235" y1="52" x2="235" y2="456" class="life"/>
+      <line x1="400" y1="52" x2="400" y2="456" class="life"/>
+      <line x1="565" y1="52" x2="565" y2="456" class="life"/>
+      <line x1="730" y1="52" x2="730" y2="456" class="life"/>
+      <line x1="880" y1="52" x2="880" y2="456" class="life"/>
+
+      <!-- 1 request -->
+      <line x1="70" y1="86" x2="235" y2="86" class="ln" marker-end="url(#a4)"/>
+      <text x="152" y="80" text-anchor="middle" class="m k halo">POST /api/todos + JSON body</text>
+
+      <!-- 2 binding failure -->
+      <line x1="235" y1="114" x2="70" y2="114" class="ln ret" marker-end="url(#a4)"/>
+      <text x="152" y="108" text-anchor="middle" class="m halo"><tspan class="st-warn">400 · 415</tspan> if the body won't bind</text>
+
+      <!-- 3 to filter -->
+      <line x1="235" y1="148" x2="400" y2="148" class="ln" marker-end="url(#a4)"/>
+      <text x="317" y="142" text-anchor="middle" class="m k halo">CreateTodoRequest (bound)</text>
+
+      <!-- 4 self validate -->
+      <polyline points="400,170 432,170 432,190 400,190" class="ln" marker-end="url(#a4)"/>
+      <text x="438" y="184" class="m halo">IValidator.ValidateAsync()</text>
+
+      <!-- 5 validation failure -->
+      <line x1="400" y1="220" x2="70" y2="220" class="ln ret" marker-end="url(#a4)"/>
+      <text x="235" y="214" text-anchor="middle" class="m halo"><tspan class="st-warn">400</tspan> ValidationProblemDetails — if invalid</text>
+
+      <!-- 6 next -->
+      <line x1="400" y1="254" x2="565" y2="254" class="ln" marker-end="url(#a4)"/>
+      <text x="482" y="248" text-anchor="middle" class="m k halo">next(context)</text>
+
+      <!-- 7 service -->
+      <line x1="565" y1="284" x2="730" y2="284" class="ln" marker-end="url(#a4)"/>
+      <text x="647" y="278" text-anchor="middle" class="m k halo">CreateAsync(request, ct)</text>
+
+      <!-- 8 insert -->
+      <line x1="730" y1="314" x2="880" y2="314" class="ln" marker-end="url(#a4)"/>
+      <text x="805" y="308" text-anchor="middle" class="m k halo">INSERT INTO Todos</text>
+      <text x="805" y="327" text-anchor="middle" class="m x halo">SaveChangesAsync · UTC stamps</text>
+
+      <!-- 9 id back -->
+      <line x1="880" y1="350" x2="730" y2="350" class="ln ret" marker-end="url(#a4)"/>
+      <text x="805" y="344" text-anchor="middle" class="m halo">Id = 7</text>
+
+      <!-- 10 response dto -->
+      <line x1="730" y1="380" x2="565" y2="380" class="ln ret" marker-end="url(#a4)"/>
+      <text x="647" y="374" text-anchor="middle" class="m halo">TodoResponse</text>
+
+      <!-- 11 201 -->
+      <line x1="565" y1="416" x2="70" y2="416" class="ln ret" marker-end="url(#a4)"/>
+      <text x="317" y="410" text-anchor="middle" class="m halo"><tspan class="st-ok">201 Created</tspan> · Location: /api/todos/7 · body: TodoResponse</text>
+
+      <text x="70" y="446" class="m x">every return climbs back through UseStatusCodePages (no-op, body present) and UseExceptionHandler</text>
+    </svg>
+    <figcaption><strong>The handler never sees an invalid request.</strong> Binding and the filter run first, so <code>Create</code> can assume a well-formed <code>CreateTodoRequest</code>, and <code>TodoService</code> only knows DTOs and entities — nothing about HTTP. The <code>Location</code> header is built from the named route <code>GetTodoById</code>, so renaming the route template can't break it.</figcaption>
+  </figure>
+</section>
+
+<!-- ============ 4. STATUS TABLE ============ -->
+<section>
+  <h2>Who decides each status code</h2>
+  <p class="intro">Every row below was exercised with <code>curl</code> during Phase 4; the "body from" column is what turns a bare code into a JSON error a client can parse.</p>
+  <div class="tbl">
+  <table>
+    <thead><tr><th>Situation</th><th>Decided by</th><th>Status</th><th>Body from</th></tr></thead>
+    <tbody>
+      <tr><td>Valid request</td><td>Handler (<code>TypedResults</code>)</td><td><span class="status ok">200</span><span class="status ok">201</span><span class="status ok">204</span></td><td><code>TodoResponse</code>, <code>PagedResponse</code>, or none</td></tr>
+      <tr><td>Empty title, title &gt; 200, description &gt; 2000</td><td><code>ValidationFilter&lt;T&gt;</code> + FluentValidation</td><td><span class="status warn">400</span></td><td><code>ValidationProblemDetails</code> with <code>errors.Title</code> / <code>errors.Description</code></td></tr>
+      <tr><td>JSON literal <code>null</code> as body</td><td><code>ValidationFilter&lt;T&gt;</code> (argument is null)</td><td><span class="status warn">400</span></td><td><code>ValidationProblemDetails</code>: "A request body is required."</td></tr>
+      <tr><td>Malformed JSON</td><td>Body binding (<code>ThrowOnBadRequest = false</code>)</td><td><span class="status warn">400</span></td><td><code>UseStatusCodePages</code> → generic ProblemDetails</td></tr>
+      <tr><td>Missing or wrong <code>Content-Type</code></td><td>Body binding</td><td><span class="status warn">415</span></td><td><code>UseStatusCodePages</code></td></tr>
+      <tr><td>Unknown <code>id</code> on GET / PUT / PATCH / DELETE</td><td>Handler — service returned <code>null</code> / <code>false</code></td><td><span class="status warn">404</span></td><td><code>UseStatusCodePages</code></td></tr>
+      <tr><td>No route, or <code>{id:int}</code> constraint fails</td><td>Routing</td><td><span class="status warn">404</span></td><td><code>UseStatusCodePages</code></td></tr>
+      <tr><td>Unhandled exception anywhere below</td><td><code>UseExceptionHandler</code></td><td><span class="status err">500</span></td><td>ProblemDetails, title only — verified identical in Development and Production</td></tr>
+    </tbody>
+  </table>
+  </div>
+</section>
+
+<!-- ============ 5. ENDPOINTS ============ -->
+<section>
+  <h2>Endpoint → service contract</h2>
+  <p class="intro">One route group, six handlers, six service methods. Handlers translate <em>null</em> and <em>false</em> into 404; nothing else.</p>
+  <div class="tbl">
+  <table>
+    <thead><tr><th>Route</th><th>Service call</th><th>Success</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td><code>GET /api/todos</code></td><td><code>GetAllAsync(isCompleted, page, pageSize)</code></td><td><span class="status ok">200</span> <code>PagedResponse&lt;TodoResponse&gt;</code></td><td>page ≥ 1, pageSize 1–100 (clamped, never rejected); ordered by <code>Id</code></td></tr>
+      <tr><td><code>GET /api/todos/{id}</code></td><td><code>GetByIdAsync(id)</code></td><td><span class="status ok">200</span> <code>TodoResponse</code></td><td><code>AsNoTracking</code> read</td></tr>
+      <tr><td><code>POST /api/todos</code></td><td><code>CreateAsync(request)</code></td><td><span class="status ok">201</span> + <code>Location</code></td><td>validated; <code>IsCompleted</code> always starts false</td></tr>
+      <tr><td><code>PUT /api/todos/{id}</code></td><td><code>UpdateAsync(id, request)</code></td><td><span class="status ok">204</span></td><td>validated; full replace incl. <code>IsCompleted</code> — the way to un-complete</td></tr>
+      <tr><td><code>PATCH /api/todos/{id}/complete</code></td><td><code>CompleteAsync(id)</code></td><td><span class="status ok">204</span></td><td>idempotent: already-complete items return 204 without a write</td></tr>
+      <tr><td><code>DELETE /api/todos/{id}</code></td><td><code>DeleteAsync(id)</code></td><td><span class="status ok">204</span></td><td>single <code>ExecuteDeleteAsync</code>, no load-then-remove</td></tr>
+    </tbody>
+  </table>
+  </div>
+</section>
+
+<!-- ============ 6. DATA ============ -->
+<section>
+  <h2>Data model and the UTC round-trip</h2>
+  <p class="intro">One table. The only non-obvious mechanism is how timestamps survive SQLite, which has no timezone-aware column type.</p>
+  <div class="tbl">
+  <table>
+    <thead><tr><th>Column</th><th>Type</th><th>Rule</th><th>Set by</th></tr></thead>
+    <tbody>
+      <tr><td><code>Id</code></td><td>INTEGER PK, autoincrement</td><td>—</td><td>SQLite</td></tr>
+      <tr><td><code>Title</code></td><td>TEXT, max 200</td><td>required, not empty</td><td>client</td></tr>
+      <tr><td><code>Description</code></td><td>TEXT, max 2000, nullable</td><td>—</td><td>client</td></tr>
+      <tr><td><code>IsCompleted</code></td><td>INTEGER (bool), indexed</td><td>false on create</td><td>server; client via PUT / PATCH</td></tr>
+      <tr><td><code>DueDate</code></td><td>TEXT (DateTime), nullable</td><td>normalised to UTC</td><td>client</td></tr>
+      <tr><td><code>CreatedAt</code> / <code>UpdatedAt</code></td><td>TEXT (DateTime)</td><td>always <code>DateTime.UtcNow</code></td><td>server only</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <figure>
+    <svg viewBox="0 0 740 250" role="img" aria-label="A DateTime with a plus six offset arrives in JSON, is parsed by System.Text.Json, normalised to UTC by UtcDateTimeConverter on write, stored as text in SQLite, stamped Kind Utc on read, and serialised back with a Z suffix.">
+      <defs>
+        <marker id="a5" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="currentColor"/></marker>
+      </defs>
+      <text x="8" y="10" class="zone-t">WRITE →</text>
+      <!-- top row -->
+      <rect x="8" y="16" width="164" height="64" class="box"/>
+      <text x="90" y="36" text-anchor="middle" class="t">JSON request</text>
+      <text x="90" y="52" text-anchor="middle" class="m">"dueDate":</text>
+      <text x="90" y="68" text-anchor="middle" class="m k">2026-09-20T15:00:00+06:00</text>
+
+      <rect x="192" y="16" width="164" height="64" class="box"/>
+      <text x="274" y="36" text-anchor="middle" class="t">System.Text.Json</text>
+      <text x="274" y="52" text-anchor="middle" class="m k">DateTime, Kind = Local</text>
+      <text x="274" y="68" text-anchor="middle" class="m x">= 09:00 (container TZ is UTC)</text>
+
+      <rect x="376" y="16" width="164" height="64" class="box emph"/>
+      <text x="458" y="36" text-anchor="middle" class="t">UtcDateTimeConverter</text>
+      <text x="458" y="52" text-anchor="middle" class="m k">write: ToUniversalTime()</text>
+      <text x="458" y="68" text-anchor="middle" class="m x">Unspecified ⇒ kept as UTC</text>
+
+      <rect x="560" y="16" width="164" height="198" class="box zone"/>
+      <text x="642" y="100" text-anchor="middle" class="t">SQLite</text>
+      <text x="642" y="118" text-anchor="middle" class="m">Todos.DueDate  TEXT</text>
+      <text x="642" y="136" text-anchor="middle" class="m k">2026-09-20 09:00:00</text>
+      <text x="642" y="154" text-anchor="middle" class="m x">no timezone stored</text>
+
+      <line x1="172" y1="48" x2="192" y2="48" class="ln" marker-end="url(#a5)"/>
+      <line x1="356" y1="48" x2="376" y2="48" class="ln" marker-end="url(#a5)"/>
+      <line x1="540" y1="48" x2="560" y2="48" class="ln" marker-end="url(#a5)"/>
+
+      <!-- bottom row -->
+      <text x="8" y="144" class="zone-t">← READ</text>
+      <rect x="376" y="150" width="164" height="64" class="box emph"/>
+      <text x="458" y="170" text-anchor="middle" class="t">UtcDateTimeConverter</text>
+      <text x="458" y="186" text-anchor="middle" class="m k">read: SpecifyKind(Utc)</text>
+      <text x="458" y="202" text-anchor="middle" class="m x">value unchanged, Kind fixed</text>
+
+      <rect x="192" y="150" width="164" height="64" class="box"/>
+      <text x="274" y="170" text-anchor="middle" class="t">TodoResponse</text>
+      <text x="274" y="186" text-anchor="middle" class="m k">DateTime, Kind = Utc</text>
+      <text x="274" y="202" text-anchor="middle" class="m x">mapped in FromEntity()</text>
+
+      <rect x="8" y="150" width="164" height="64" class="box"/>
+      <text x="90" y="170" text-anchor="middle" class="t">JSON response</text>
+      <text x="90" y="186" text-anchor="middle" class="m">"dueDate":</text>
+      <text x="90" y="202" text-anchor="middle" class="m k">2026-09-20T09:00:00Z</text>
+
+      <line x1="560" y1="182" x2="540" y2="182" class="ln" marker-end="url(#a5)"/>
+      <line x1="376" y1="182" x2="356" y2="182" class="ln" marker-end="url(#a5)"/>
+      <line x1="192" y1="182" x2="172" y2="182" class="ln" marker-end="url(#a5)"/>
+
+      <text x="8" y="240" class="m x">Applied to every DateTime via ConfigureConventions — no per-property annotations, no migration change.</text>
+    </svg>
+    <figcaption><strong>Without the converter the read side returned <code>2026-09-20T09:00:00</code> with no <code>Z</code></strong>, which clients interpret as local time. The converter costs one class and turns every stored timestamp back into an unambiguous UTC instant.</figcaption>
+  </figure>
+</section>
+
+<!-- ============ 7. CODE MAP ============ -->
+<section>
+  <h2>Where things live</h2>
+  <p class="intro">Dependencies point one way: Endpoints → Services → Data → Models. DTOs are shared by the outer two layers; nothing below Services knows a DTO exists.</p>
+  <div class="tbl">
+  <table>
+    <thead><tr><th>Path</th><th>Role</th><th>Depends on</th></tr></thead>
+    <tbody>
+      <tr><td><code>Program.cs</code></td><td>Composition root: DI registrations, middleware order, dev-only migration and Swagger. 33 lines.</td><td>everything, by registration only</td></tr>
+      <tr><td><code>Endpoints/TodoEndpoints.cs</code></td><td>Route group, six handlers, route names, OpenAPI metadata</td><td><code>ITodoService</code>, DTOs</td></tr>
+      <tr><td><code>Endpoints/ValidationFilter.cs</code></td><td>Generic endpoint filter; resolves <code>IValidator&lt;T&gt;</code> per request</td><td>FluentValidation</td></tr>
+      <tr><td><code>Validators/*Validator.cs</code></td><td>Field rules for the two request DTOs</td><td>DTOs</td></tr>
+      <tr><td><code>Services/ITodoService.cs</code>, <code>TodoService.cs</code></td><td>All CRUD logic, paging, timestamps, entity ↔ DTO mapping</td><td><code>TodoDbContext</code>, DTOs, <code>TodoItem</code></td></tr>
+      <tr><td><code>Dtos/</code></td><td><code>CreateTodoRequest</code>, <code>UpdateTodoRequest</code>, <code>TodoResponse</code>, <code>PagedResponse&lt;T&gt;</code> — records, never entities</td><td><code>TodoItem</code> (mapping only)</td></tr>
+      <tr><td><code>Data/TodoDbContext.cs</code></td><td>EF model config, <code>DbSet&lt;TodoItem&gt;</code>, UTC convention</td><td><code>TodoItem</code>, <code>UtcDateTimeConverter</code></td></tr>
+      <tr><td><code>Data/Migrations/</code></td><td><code>InitialCreate</code> — generated, committed, applied on startup in Development</td><td>—</td></tr>
+      <tr><td><code>Models/TodoItem.cs</code></td><td>The EF entity. Leaf of the graph.</td><td>—</td></tr>
+      <tr><td><code>dotnet.sh</code>, <code>.config/dotnet-tools.json</code></td><td>Host-side toolchain: SDK container wrapper and pinned <code>dotnet-ef</code> 8.0.31</td><td>Docker</td></tr>
+    </tbody>
+  </table>
+  </div>
+</section>
+
+<!-- ============ 8. DEV LOOP ============ -->
+<section>
+  <h2>The development loop</h2>
+  <p class="intro">Each command below starts a throw-away SDK container, runs, and exits; only <code>run</code> and <code>watch</code> publish port 5000, so a build or test can run beside a live server.</p>
+  <div class="cmd">
+    <code>./dotnet.sh build</code><span>compile both projects — warnings are errors</span>
+    <code>./dotnet.sh test</code><span>xUnit; Phase 5 adds <code>WebApplicationFactory</code> tests on in-memory SQLite</span>
+    <code>./dotnet.sh run --project TodoApi.Api</code><span>Kestrel on <code>http://localhost:5000</code>, Swagger UI at <code>/swagger</code>, migrations applied</span>
+    <code>./dotnet.sh ef migrations add &lt;Name&gt; --project TodoApi.Api</code><span>after any change to <code>TodoItem</code> or the model config</span>
+    <code>./dotnet.sh format</code><span>before committing</span>
+    <code>TodoApi.Api/TodoApi.Api.http</code><span>one request per endpoint, runnable from VS Code</span>
+  </div>
+  <p>What is not yet drawn: Phase 5 replaces the placeholder test with integration tests that boot <code>Program</code> in-process against <code>Data Source=:memory:</code>, and Phase 6 adds the runtime image shown dashed at the top of this page.</p>
+</section>
+</div>
+
+</body>
+</html>
