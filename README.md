@@ -1,0 +1,1 @@
+this will be simple CRUD functionalities APIs for todo/task list using DotNet core
