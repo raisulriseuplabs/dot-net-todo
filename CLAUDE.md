@@ -7,7 +7,7 @@ This file is the source of truth for how to build, test, and extend the project.
 
 - [x] Phase 0 — Environment (Docker-based; no SDK on the host)
 - [x] Phase 1 — Scaffold
-- [ ] Phase 2 — Domain + persistence
+- [x] Phase 2 — Domain + persistence
 - [ ] Phase 3 — Endpoints
 - [ ] Phase 4 — Validation + error handling
 - [ ] Phase 5 — Tests
